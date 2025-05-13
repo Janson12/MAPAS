@@ -1,20 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Semáforos - Cliente</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     #map { height: 100vh; }
-    .traffic-light { width: 20px; height: 20px; border-radius: 50%; }
-    .red { background: red; }
-    .green { background: green; }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="script.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io("https://map-qw2a.onrender.com");
+    const map = L.map("map").setView([-23.5505, -46.6333], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+    let markers = [];
+
+    function desenharSemaforos(grupos) {
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      grupos.forEach((grupo, i) => {
+        grupo.semaforos.forEach(semaforo => {
+          const color = semaforo.status === "green" ? "green" : "red";
+          const marker = L.circleMarker(semaforo.latlng, {
+            radius: 10,
+            color,
+            fillOpacity: 1
+          }).addTo(map);
+          marker.bindPopup(`Grupo ${i + 1} - ${semaforo.id}`);
+          markers.push(marker);
+        });
+      });
+    }
+
+    socket.on("updateSemaforos", desenharSemaforos);
+  </script>
 </body>
 </html>
