@@ -1,23 +1,87 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Semáforos</title>
 </head>
 <body>
   <h1>Admin - Semáforos</h1>
 
-  <form id="novoGrupoForm">
+  <form id="formGrupo">
     <h3>Adicionar Grupo</h3>
-    Latitude(s) e Longitude(s):<br/>
-    <textarea id="coords" placeholder="lat,lng\nlat,lng\n..." rows="5" cols="30"></textarea><br/>
-    Tempo (s): <input type="number" id="tempo" value="30" /><br/>
+    <textarea id="coords" rows="5" cols="30" placeholder="lat,lng\nlat,lng..."></textarea><br>
+    Tempo (s): <input type="number" id="tempo" value="30"><br>
     <button type="submit">Adicionar Grupo</button>
   </form>
 
   <div id="grupos"></div>
 
-  <script src="script.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io("https://map-qw2a.onrender.com");
+    let grupos = [];
+
+    const gruposDiv = document.getElementById("grupos");
+    const form = document.getElementById("formGrupo");
+
+    socket.on("updateSemaforos", (data) => {
+      grupos = data;
+      renderizar();
+    });
+
+    function renderizar() {
+      gruposDiv.innerHTML = "";
+      grupos.forEach((g, i) => {
+        const div = document.createElement("div");
+        div.innerHTML = `
+          <h3>Grupo ${i + 1}</h3>
+          Tempo: ${g.tempo}s <br>
+          Semáforos: ${g.semaforos.length} <br>
+          <button onclick="resetar(${i})">Resetar</button>
+          <button onclick="remover(${i})">Remover</button>
+          <hr>
+        `;
+        gruposDiv.appendChild(div);
+      });
+    }
+
+    window.resetar = async function (index) {
+      await fetch("https://map-qw2a.onrender.com/resetGrupo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index })
+      });
+    };
+
+    window.remover = async function (index) {
+      grupos.splice(index, 1);
+      await fetch("https://map-qw2a.onrender.com/salvarTudo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(grupos)
+      });
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const tempo = parseInt(document.getElementById("tempo").value);
+      const coords = document.getElementById("coords").value
+        .trim().split("\n")
+        .map((c, i) => {
+          const [lat, lng] = c.split(",").map(Number);
+          return { id: `grupo${grupos.length + 1}_${i + 1}`, latlng: [lat, lng], status: i === 0 ? "green" : "red" };
+        });
+
+      grupos.push({ tempo, semaforos: coords });
+      await fetch("https://map-qw2a.onrender.com/salvarTudo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(grupos)
+      });
+
+      form.reset();
+    });
+  </script>
 </body>
 </html>
