@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - Semáforos</title>
+</head>
+<body>
+  <h1>Admin - Semáforos</h1>
+
+  <form id="novoGrupoForm">
+    <h3>Adicionar Grupo</h3>
+    Latitude(s) e Longitude(s):<br/>
+    <textarea id="coords" placeholder="lat,lng\nlat,lng\n..." rows="5" cols="30"></textarea><br/>
+    Tempo (s): <input type="number" id="tempo" value="30" /><br/>
+    <button type="submit">Adicionar Grupo</button>
+  </form>
+
+  <div id="grupos"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
