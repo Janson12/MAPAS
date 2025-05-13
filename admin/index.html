@@ -1,191 +1,100 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Admin - Semáforos</title>
+  <title>Admin Semáforos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body {
+    html, body, #map {
+      height: 100%;
       margin: 0;
-      font-family: Arial, sans-serif;
-      padding: 10px;
-    }
-    #map {
-      height: 300px;
-      width: 100%;
-      margin-bottom: 10px;
-    }
-    textarea, input, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      font-size: 16px;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      margin-top: 10px;
-    }
-    h1, h3 {
-      text-align: center;
-    }
-    .grupo {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 5px;
     }
     .arrow {
-      width: 0;
-      height: 0;
-      border-left: 10px solid transparent;
-      border-right: 10px solid transparent;
-      border-bottom: 20px solid blue;
-      transform: rotate(0deg);
+      width: 30px;
+      height: 30px;
+      background: url('https://cdn-icons-png.flaticon.com/512/60/60758.png') no-repeat center;
+      background-size: contain;
+      transform-origin: center;
     }
-    #localizar {
+    .locate-btn {
       position: absolute;
       top: 10px;
-      right: 10px;
-      z-index: 999;
-      background: #007bff;
-      color: white;
-      padding: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.4);
     }
   </style>
 </head>
 <body>
-  <button id="localizar">Ir para minha localização</button>
-  <h1>Admin - Semáforos</h1>
-
+  <button class="locate-btn" onclick="centralizar()">📍</button>
   <div id="map"></div>
-
-  <form id="formGrupo">
-    <h3>Adicionar Grupo</h3>
-    <textarea id="coords" rows="5" placeholder="lat,lng\nlat,lng..."></textarea>
-    <input type="number" id="tempo" placeholder="Tempo em segundos" value="30">
-    <button type="submit">Adicionar Grupo</button>
-  </form>
-
-  <div id="grupos"></div>
-
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
   <script>
     const socket = io("https://map-qw2a.onrender.com");
-    const map = L.map("map").setView([-23.5505, -46.6333], 15);
+    const map = L.map("map").setView([0, 0], 15);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    let grupos = [];
-    let userLatLng = null;
     let userMarker = null;
     let directionMarker = null;
+    let lastLatLng = null;
 
-    const gruposDiv = document.getElementById("grupos");
-    const form = document.getElementById("formGrupo");
-
-    socket.on("updateSemaforos", (data) => {
-      grupos = data;
-      renderizar();
-    });
-
-    function renderizar() {
-      gruposDiv.innerHTML = "";
-      grupos.forEach((g, i) => {
-        const div = document.createElement("div");
-        div.className = "grupo";
-        div.innerHTML = `
-          <h3>Grupo ${i + 1}</h3>
-          Tempo: ${g.tempo}s<br>
-          Semáforos: ${g.semaforos.length}<br>
-          <button onclick="resetar(${i})">Resetar</button>
-          <button onclick="remover(${i})">Remover</button>
-        `;
-        gruposDiv.appendChild(div);
-      });
+    function calcularBearing(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const toDeg = rad => rad * 180 / Math.PI;
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      const brng = Math.atan2(y, x);
+      return (toDeg(brng) + 360) % 360;
     }
-
-    window.resetar = async function (index) {
-      await fetch("https://map-qw2a.onrender.com/resetGrupo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index })
-      });
-    };
-
-    window.remover = async function (index) {
-      grupos.splice(index, 1);
-      await fetch("https://map-qw2a.onrender.com/salvarTudo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(grupos)
-      });
-    };
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const tempo = parseInt(document.getElementById("tempo").value);
-      const coords = document.getElementById("coords").value
-        .trim().split("\n")
-        .map((c, i) => {
-          const [lat, lng] = c.split(",").map(Number);
-          return {
-            id: `grupo${grupos.length + 1}_${i + 1}`,
-            latlng: [lat, lng],
-            status: i === 0 ? "green" : "red"
-          };
-        });
-
-      grupos.push({ tempo, semaforos: coords });
-      await fetch("https://map-qw2a.onrender.com/salvarTudo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(grupos)
-      });
-
-      form.reset();
-    });
 
     function atualizarLocalizacao(pos) {
       const { latitude, longitude } = pos.coords;
       const latlng = [latitude, longitude];
-      userLatLng = latlng;
 
       if (!userMarker) {
-        userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui").openPopup();
+        userMarker = L.marker(latlng).addTo(map).bindPopup("Você (admin)").openPopup();
         directionMarker = L.marker(latlng, {
-          icon: L.divIcon({ className: 'arrow', iconSize: [20, 20] })
+          icon: L.divIcon({ className: 'arrow', iconSize: [30, 30] })
         }).addTo(map);
         map.setView(latlng, 17);
       } else {
         userMarker.setLatLng(latlng);
         directionMarker.setLatLng(latlng);
+
+        if (lastLatLng) {
+          const bearing = calcularBearing(lastLatLng[0], lastLatLng[1], latlng[0], latlng[1]);
+          directionMarker.getElement().style.transform = `rotate(${bearing}deg)`;
+        }
+
+        lastLatLng = latlng;
       }
+    }
+
+    function centralizar() {
+      if (userMarker) map.setView(userMarker.getLatLng(), 17);
     }
 
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(atualizarLocalizacao);
     }
 
-    document.getElementById("localizar").addEventListener("click", () => {
-      if (userLatLng) {
-        map.setView(userLatLng, 17);
-      }
-    });
-
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", (event) => {
-        const alpha = event.alpha;
-        if (directionMarker) {
-          directionMarker.getElement().style.transform = `rotate(${alpha}deg)`;
-        }
+    socket.on("updateSemaforos", grupos => {
+      grupos.forEach((grupo, idx) => {
+        grupo.semaforos.forEach(s => {
+          L.circleMarker(s.latlng, {
+            color: s.status === "green" ? "green" : "red",
+            radius: 10
+          }).addTo(map).bindPopup(`Grupo ${idx + 1}`);
+        });
       });
-    }
+    });
   </script>
 </body>
 </html>
