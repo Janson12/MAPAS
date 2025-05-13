@@ -45,9 +45,22 @@
       border-bottom: 20px solid blue;
       transform: rotate(0deg);
     }
+    #localizar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 999;
+      background: #007bff;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
+  <button id="localizar">Ir para minha localização</button>
   <h1>Admin - Semáforos</h1>
 
   <div id="map"></div>
@@ -69,6 +82,7 @@
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
     let grupos = [];
+    let userLatLng = null;
     let userMarker = null;
     let directionMarker = null;
 
@@ -140,12 +154,14 @@
     function atualizarLocalizacao(pos) {
       const { latitude, longitude } = pos.coords;
       const latlng = [latitude, longitude];
+      userLatLng = latlng;
 
       if (!userMarker) {
-        userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui");
+        userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui").openPopup();
         directionMarker = L.marker(latlng, {
           icon: L.divIcon({ className: 'arrow', iconSize: [20, 20] })
         }).addTo(map);
+        map.setView(latlng, 17);
       } else {
         userMarker.setLatLng(latlng);
         directionMarker.setLatLng(latlng);
@@ -155,6 +171,12 @@
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(atualizarLocalizacao);
     }
+
+    document.getElementById("localizar").addEventListener("click", () => {
+      if (userLatLng) {
+        map.setView(userLatLng, 17);
+      }
+    });
 
     if (window.DeviceOrientationEvent) {
       window.addEventListener("deviceorientation", (event) => {
