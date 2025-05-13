@@ -15,6 +15,7 @@
       background: url('https://cdn-icons-png.flaticon.com/512/60/60758.png') no-repeat center;
       background-size: contain;
       transform-origin: center;
+      transition: transform 0.1s linear;
     }
     .locate-btn {
       position: absolute;
@@ -43,6 +44,7 @@
     let directionMarker = null;
     let lastLatLng = null;
 
+    // Função para calcular o bearing (direção) entre dois pontos
     function calcularBearing(lat1, lon1, lat2, lon2) {
       const toRad = deg => deg * Math.PI / 180;
       const toDeg = rad => rad * 180 / Math.PI;
@@ -54,6 +56,7 @@
       return (toDeg(brng) + 360) % 360;
     }
 
+    // Função para atualizar a posição e direção da seta
     function atualizarLocalizacao(pos) {
       const { latitude, longitude } = pos.coords;
       const latlng = [latitude, longitude];
@@ -68,8 +71,10 @@
         userMarker.setLatLng(latlng);
         directionMarker.setLatLng(latlng);
 
+        // Se a posição anterior existe, calcule o bearing e gire a seta
         if (lastLatLng) {
           const bearing = calcularBearing(lastLatLng[0], lastLatLng[1], latlng[0], latlng[1]);
+          // Atualizando a rotação da seta
           directionMarker.getElement().style.transform = `rotate(${bearing}deg)`;
         }
 
@@ -77,10 +82,12 @@
       }
     }
 
+    // Função para centralizar o mapa na localização do usuário
     function centralizar() {
       if (userMarker) map.setView(userMarker.getLatLng(), 17);
     }
 
+    // Verificando e acompanhando a localização do usuário
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(atualizarLocalizacao);
     }
