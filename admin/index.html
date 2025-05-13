@@ -1,12 +1,26 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin - Semáforos</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 50vh; }
+    .arrow {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 20px solid blue;
+      transform: rotate(0deg);
+    }
+  </style>
 </head>
 <body>
   <h1>Admin - Semáforos</h1>
+
+  <div id="map"></div>
 
   <form id="formGrupo">
     <h3>Adicionar Grupo</h3>
@@ -17,10 +31,16 @@
 
   <div id="grupos"></div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
     const socket = io("https://map-qw2a.onrender.com");
+    const map = L.map("map").setView([-23.5505, -46.6333], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
     let grupos = [];
+    let userMarker = null;
+    let directionMarker = null;
 
     const gruposDiv = document.getElementById("grupos");
     const form = document.getElementById("formGrupo");
@@ -70,7 +90,11 @@
         .trim().split("\n")
         .map((c, i) => {
           const [lat, lng] = c.split(",").map(Number);
-          return { id: `grupo${grupos.length + 1}_${i + 1}`, latlng: [lat, lng], status: i === 0 ? "green" : "red" };
+          return {
+            id: `grupo${grupos.length + 1}_${i + 1}`,
+            latlng: [lat, lng],
+            status: i === 0 ? "green" : "red"
+          };
         });
 
       grupos.push({ tempo, semaforos: coords });
@@ -82,6 +106,34 @@
 
       form.reset();
     });
+
+    function atualizarLocalizacao(pos) {
+      const { latitude, longitude } = pos.coords;
+      const latlng = [latitude, longitude];
+
+      if (!userMarker) {
+        userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui");
+        directionMarker = L.marker(latlng, {
+          icon: L.divIcon({ className: 'arrow', iconSize: [20, 20] })
+        }).addTo(map);
+      } else {
+        userMarker.setLatLng(latlng);
+        directionMarker.setLatLng(latlng);
+      }
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(atualizarLocalizacao);
+    }
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener("deviceorientation", (event) => {
+        const alpha = event.alpha;
+        if (directionMarker) {
+          directionMarker.getElement().style.transform = `rotate(${alpha}deg)`;
+        }
+      });
+    }
   </script>
 </body>
 </html>
