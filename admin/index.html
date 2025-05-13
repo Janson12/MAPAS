@@ -2,11 +2,41 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Admin - Semáforos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    #map { height: 50vh; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      padding: 10px;
+    }
+    #map {
+      height: 300px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    textarea, input, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      font-size: 16px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      margin-top: 10px;
+    }
+    h1, h3 {
+      text-align: center;
+    }
+    .grupo {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
     .arrow {
       width: 0;
       height: 0;
@@ -24,8 +54,8 @@
 
   <form id="formGrupo">
     <h3>Adicionar Grupo</h3>
-    <textarea id="coords" rows="5" cols="30" placeholder="lat,lng\nlat,lng..."></textarea><br>
-    Tempo (s): <input type="number" id="tempo" value="30"><br>
+    <textarea id="coords" rows="5" placeholder="lat,lng\nlat,lng..."></textarea>
+    <input type="number" id="tempo" placeholder="Tempo em segundos" value="30">
     <button type="submit">Adicionar Grupo</button>
   </form>
 
@@ -54,13 +84,13 @@
       gruposDiv.innerHTML = "";
       grupos.forEach((g, i) => {
         const div = document.createElement("div");
+        div.className = "grupo";
         div.innerHTML = `
           <h3>Grupo ${i + 1}</h3>
-          Tempo: ${g.tempo}s <br>
-          Semáforos: ${g.semaforos.length} <br>
+          Tempo: ${g.tempo}s<br>
+          Semáforos: ${g.semaforos.length}<br>
           <button onclick="resetar(${i})">Resetar</button>
           <button onclick="remover(${i})">Remover</button>
-          <hr>
         `;
         gruposDiv.appendChild(div);
       });
