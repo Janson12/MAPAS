@@ -1,113 +1,100 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Semáforos - Cliente</title>
+  <title>Mapa Cliente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
+    html, body, #map {
       height: 100%;
-    }
-    #map {
-      height: 100vh;
-      width: 100%;
+      margin: 0;
     }
     .arrow {
-      width: 0;
-      height: 0;
-      border-left: 10px solid transparent;
-      border-right: 10px solid transparent;
-      border-bottom: 20px solid blue;
-      transform: rotate(0deg);
+      width: 30px;
+      height: 30px;
+      background: url('https://cdn-icons-png.flaticon.com/512/60/60758.png') no-repeat center;
+      background-size: contain;
+      transform-origin: center;
     }
-    #localizar {
+    .locate-btn {
       position: absolute;
       top: 10px;
-      right: 10px;
-      z-index: 999;
-      background: #007bff;
-      color: white;
-      padding: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.4);
     }
   </style>
 </head>
 <body>
-  <button id="localizar">Ir para minha localização</button>
+  <button class="locate-btn" onclick="centralizar()">📍</button>
   <div id="map"></div>
-
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
   <script>
     const socket = io("https://map-qw2a.onrender.com");
-    const map = L.map("map").setView([-23.5505, -46.6333], 15);
+    const map = L.map("map").setView([0, 0], 15);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    let userLatLng = null;
-    let markers = [];
     let userMarker = null;
     let directionMarker = null;
+    let lastLatLng = null;
 
-    function desenharSemaforos(grupos) {
-      markers.forEach(m => map.removeLayer(m));
-      markers = [];
-
-      grupos.forEach((grupo, i) => {
-        grupo.semaforos.forEach(semaforo => {
-          const color = semaforo.status === "green" ? "green" : "red";
-          const marker = L.circleMarker(semaforo.latlng, {
-            radius: 10,
-            color,
-            fillOpacity: 1
-          }).addTo(map);
-          marker.bindPopup(`Grupo ${i + 1} - ${semaforo.id}`);
-          markers.push(marker);
-        });
-      });
+    function calcularBearing(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const toDeg = rad => rad * 180 / Math.PI;
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      const brng = Math.atan2(y, x);
+      return (toDeg(brng) + 360) % 360;
     }
-
-    socket.on("updateSemaforos", desenharSemaforos);
 
     function atualizarLocalizacao(pos) {
       const { latitude, longitude } = pos.coords;
       const latlng = [latitude, longitude];
-      userLatLng = latlng;
 
       if (!userMarker) {
         userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui").openPopup();
         directionMarker = L.marker(latlng, {
-          icon: L.divIcon({ className: 'arrow', iconSize: [20, 20] })
+          icon: L.divIcon({ className: 'arrow', iconSize: [30, 30] })
         }).addTo(map);
         map.setView(latlng, 17);
       } else {
         userMarker.setLatLng(latlng);
         directionMarker.setLatLng(latlng);
+
+        if (lastLatLng) {
+          const bearing = calcularBearing(lastLatLng[0], lastLatLng[1], latlng[0], latlng[1]);
+          directionMarker.getElement().style.transform = `rotate(${bearing}deg)`;
+        }
+
+        lastLatLng = latlng;
       }
+    }
+
+    function centralizar() {
+      if (userMarker) map.setView(userMarker.getLatLng(), 17);
     }
 
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(atualizarLocalizacao);
     }
 
-    document.getElementById("localizar").addEventListener("click", () => {
-      if (userLatLng) {
-        map.setView(userLatLng, 17);
-      }
-    });
-
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", (event) => {
-        const alpha = event.alpha;
-        if (directionMarker) {
-          directionMarker.getElement().style.transform = `rotate(${alpha}deg)`;
-        }
+    socket.on("updateSemaforos", grupos => {
+      grupos.forEach(grupo => {
+        grupo.semaforos.forEach(s => {
+          L.circleMarker(s.latlng, {
+            color: s.status === "green" ? "green" : "red",
+            radius: 10
+          }).addTo(map);
+        });
       });
-    }
+    });
   </script>
 </body>
 </html>
