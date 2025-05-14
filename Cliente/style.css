@@ -3,9 +3,11 @@ html, body {
   padding: 0;
   height: 100%;
 }
+
 #map {
   height: 100%;
 }
+
 #locate {
   position: absolute;
   top: 10px;
@@ -16,7 +18,9 @@ html, body {
   padding: 8px;
   border-radius: 8px;
   font-size: 18px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
+
 #arrow {
   position: absolute;
   bottom: 10px;
@@ -24,4 +28,5 @@ html, body {
   z-index: 1000;
   font-size: 24px;
   transform-origin: center;
+  transition: transform 0.2s ease;
 }
