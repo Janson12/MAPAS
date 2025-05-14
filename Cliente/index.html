@@ -1,114 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <title>Mapa Cliente</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-    }
-    .arrow {
-      width: 30px;
-      height: 30px;
-      background: url('https://cdn-icons-png.flaticon.com/512/60/60758.png') no-repeat center;
-      background-size: contain;
-      transform-origin: center;
-      transition: transform 0.1s linear;
-    }
-    .locate-btn {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: white;
-      border: none;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.4);
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Semáforos ao Vivo</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2b2b2b" />
 </head>
 <body>
-  <button class="locate-btn" onclick="centralizar()">📍</button>
   <div id="map"></div>
+  <button id="locate">📍</button>
+  <div id="arrow">🧭</div>
+
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
-  <script>
-    const socket = io("https://map-qw2a.onrender.com");
-    const map = L.map("map").setView([0, 0], 15);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-    let userMarker = null;
-    let directionMarker = null;
-    let lastLatLng = null;
-    let currentHeading = 0; // Armazena o azimute atual da bússola
-
-    // Função para atualizar a bússola com o azimute do dispositivo
-    function atualizarBussola(event) {
-      currentHeading = event.alpha; // Captura a direção da bússola
-    }
-
-    // Função para calcular o bearing (direção) entre dois pontos
-    function calcularBearing(lat1, lon1, lat2, lon2) {
-      const toRad = deg => deg * Math.PI / 180;
-      const toDeg = rad => rad * 180 / Math.PI;
-      const dLon = toRad(lon2 - lon1);
-      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-      const brng = Math.atan2(y, x);
-      return (toDeg(brng) + 360) % 360;
-    }
-
-    // Função para atualizar a posição e direção da seta
-    function atualizarLocalizacao(pos) {
-      const { latitude, longitude } = pos.coords;
-      const latlng = [latitude, longitude];
-
-      if (!userMarker) {
-        userMarker = L.marker(latlng).addTo(map).bindPopup("Você está aqui").openPopup();
-        directionMarker = L.marker(latlng, {
-          icon: L.divIcon({ className: 'arrow', iconSize: [30, 30] })
-        }).addTo(map);
-        map.setView(latlng, 17);
-      } else {
-        userMarker.setLatLng(latlng);
-        directionMarker.setLatLng(latlng);
-
-        // Atualizando a rotação da seta com base na direção da bússola
-        directionMarker.getElement().style.transform = `rotate(${currentHeading}deg)`;
-
-        lastLatLng = latlng;
-      }
-    }
-
-    // Função para centralizar o mapa na localização do usuário
-    function centralizar() {
-      if (userMarker) map.setView(userMarker.getLatLng(), 17);
-    }
-
-    // Verificando e acompanhando a localização do usuário
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(atualizarLocalizacao);
-    }
-
-    // Habilitar bússola, se disponível no dispositivo
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", atualizarBussola);
-    }
-
-    socket.on("updateSemaforos", grupos => {
-      grupos.forEach(grupo => {
-        grupo.semaforos.forEach(s => {
-          L.circleMarker(s.latlng, {
-            color: s.status === "green" ? "green" : "red",
-            radius: 10
-          }).addTo(map);
-        });
-      });
-    });
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
