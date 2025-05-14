@@ -43,6 +43,12 @@
     let userMarker = null;
     let directionMarker = null;
     let lastLatLng = null;
+    let currentHeading = 0; // Armazena o azimute atual da bússola
+
+    // Função para atualizar a bússola com o azimute do dispositivo
+    function atualizarBussola(event) {
+      currentHeading = event.alpha; // Captura a direção da bússola
+    }
 
     // Função para calcular o bearing (direção) entre dois pontos
     function calcularBearing(lat1, lon1, lat2, lon2) {
@@ -71,12 +77,8 @@
         userMarker.setLatLng(latlng);
         directionMarker.setLatLng(latlng);
 
-        // Se a posição anterior existe, calcule o bearing e gire a seta
-        if (lastLatLng) {
-          const bearing = calcularBearing(lastLatLng[0], lastLatLng[1], latlng[0], latlng[1]);
-          // Atualizando a rotação da seta
-          directionMarker.getElement().style.transform = `rotate(${bearing}deg)`;
-        }
+        // Atualizando a rotação da seta com base na direção da bússola
+        directionMarker.getElement().style.transform = `rotate(${currentHeading}deg)`;
 
         lastLatLng = latlng;
       }
@@ -90,6 +92,11 @@
     // Verificando e acompanhando a localização do usuário
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(atualizarLocalizacao);
+    }
+
+    // Habilitar bússola, se disponível no dispositivo
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener("deviceorientation", atualizarBussola);
     }
 
     socket.on("updateSemaforos", grupos => {
